@@ -1,15 +1,3 @@
-// 允许编译器推导出 CAREER_SUGGESTIONS 的合法键
-type CareerKey = keyof typeof CAREER_SUGGESTIONS;
-
-// 运行时类型守卫：只放行四大类键
-const isCareerKey = (k: string): k is CareerKey =>
-  k === "executing" || k === "influencing" || k === "relationship" || k === "strategic";
-
-//（可选）把超出范围的维度映射到某一类；这里把 'composite' 归到 'strategic'，按你业务需要改
-const DIMENSION_ALIAS: Partial<Record<string, CareerKey>> = {
-  composite: "strategic",
-};
-
 "use client";
 
 import { startTransition, useEffect, useMemo, useState } from "react";
@@ -24,6 +12,20 @@ import {
   QUESTIONS,
   SUB_DIMENSIONS,
 } from "@/app/data/questions";
+
+// ====== 放在 import 之后：键收窄 + 别名映射 ======
+// 允许编译器推导出 CAREER_SUGGESTIONS 的合法键
+type CareerKey = keyof typeof CAREER_SUGGESTIONS;
+
+// 运行时类型守卫：只放行四大类键
+const isCareerKey = (k: string): k is CareerKey =>
+  k === "executing" || k === "influencing" || k === "relationship" || k === "strategic";
+
+//（可选）把超出范围的维度映射到某一类；这里把 'composite' 归到 'strategic'，按你业务需要改
+const DIMENSION_ALIAS: Partial<Record<string, CareerKey>> = {
+  composite: "strategic",
+};
+// ===================================================
 
 const STORAGE_KEY = "gallup-strengths-answers";
 
@@ -197,31 +199,31 @@ export default function ResultsPage() {
     ];
 
     return tiers.map((tier, index) => {
-if (!tier.dimension) {
-  return tier;
-}
+      if (!tier.dimension) {
+        return tier;
+      }
 
-const rawId = String(tier.dimension.id);
-const mappedId = DIMENSION_ALIAS[rawId] ?? rawId;
+      const rawId = String(tier.dimension.id);
+      const mappedId = DIMENSION_ALIAS[rawId] ?? rawId;
 
-if (!isCareerKey(mappedId)) {
-  // 兜底：遇到未知维度（例如无映射的 'composite'），避免类型/运行时问题
-  return {
-    ...tier,
-    roles: [],      // 按需要可给默认建议
-    summary: "",    // 按需要可给默认 summary
-  };
-}
+      if (!isCareerKey(mappedId)) {
+        // 兜底：遇到未知维度（例如无映射的 'composite'），避免类型/运行时问题
+        return {
+          ...tier,
+          roles: [],      // 按需要可给默认建议
+          summary: "",    // 按需要可给默认 summary
+        };
+      }
 
-const suggestion = CAREER_SUGGESTIONS[mappedId];
-const roleBuckets = [suggestion.tier1, suggestion.tier2, suggestion.tier3];
-return {
-  ...tier,
-  roles: roleBuckets[Math.min(index, roleBuckets.length - 1)],
-  summary: suggestion.summary,
-};
-
-  }, [leadingDimension, secondaryDimension, tertiaryDimension]);
+      const suggestion = CAREER_SUGGESTIONS[mappedId];
+      const roleBuckets = [suggestion.tier1, suggestion.tier2, suggestion.tier3];
+      return {
+        ...tier,
+        roles: roleBuckets[Math.min(index, roleBuckets.length - 1)],
+        summary: suggestion.summary,
+      };
+    });
+  }, [leadingDimension, secondaryDimension, tertiaryDimension]); // ★ 修正：闭合 tiers.map 与 useMemo
 
   if (!answers || dimensionResults.length === 0) {
     return (
