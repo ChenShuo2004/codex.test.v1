@@ -66,14 +66,31 @@ const INFO_BLOCKS = [
 ];
 
 const optionTone = (index: number) => {
-  const colors = ["text-red-600", "text-orange-600", "text-zinc-500", "text-sky-600", "text-indigo-600"];
+  const colors = [
+    "text-red-600",
+    "text-orange-600",
+    "text-zinc-500",
+    "text-sky-600",
+    "text-indigo-600",
+  ];
   return colors[index] ?? "text-zinc-600";
 };
 
-const groupQuestions = () => {
+type QuestionSection = {
+  id: (typeof DIMENSION_METADATA)[number]["id"];
+  title: string;
+  description: string;
+  sections: { title: string; questions: typeof QUESTIONS }[];
+};
+
+const groupQuestions = (): QuestionSection[] => {
   const byDimension = new Map<
     (typeof DIMENSION_METADATA)[number]["id"],
-    { title: string; description: string; sections: { title: string; questions: typeof QUESTIONS }[] }
+    {
+      title: string;
+      description: string;
+      sections: { title: string; questions: typeof QUESTIONS }[];
+    }
   >();
 
   DIMENSION_METADATA.forEach((meta) => {
@@ -86,9 +103,7 @@ const groupQuestions = () => {
 
   QUESTIONS.forEach((question) => {
     const dimension = byDimension.get(question.dimension);
-    if (!dimension) {
-      return;
-    }
+    if (!dimension) return;
 
     const sectionTitle = question.subDimension ?? dimension.title;
     let section = dimension.sections.find((item) => item.title === sectionTitle);
@@ -122,7 +137,8 @@ function OptionButton({
   index: number;
   onSelect: () => void;
 }) {
-  const base = "flex flex-col items-center gap-1 rounded-2xl border px-3 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
+  const base =
+    "flex flex-col items-center gap-1 rounded-2xl border px-3 py-2 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
   const selectedStyles = selected
     ? "border-blue-500 bg-blue-50 text-blue-700 shadow-sm"
     : "border-zinc-200 bg-white text-zinc-600 hover:border-blue-300";
@@ -134,7 +150,9 @@ function OptionButton({
       onClick={onSelect}
       aria-pressed={selected}
     >
-      <span className={`text-xs font-semibold ${optionTone(index)}`}>{short}</span>
+      <span className={`text-xs font-semibold ${optionTone(index)}`}>
+        {short}
+      </span>
       <span className="text-[13px] leading-4 text-center">{label}</span>
     </button>
   );
@@ -155,17 +173,23 @@ function QuestionCard({
     <div
       id={`question-${question.id}`}
       data-question-id={question.id}
-      className={`rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm ${showError ? "ring-2 ring-red-400" : ""}`}
+      className={`rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm ${
+        showError ? "ring-2 ring-red-400" : ""
+      }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-blue-700">{question.title}</p>
+          <p className="text-sm font-semibold text-blue-700">
+            {question.title}
+          </p>
           <p className="mt-1 text-base font-medium text-zinc-900">选项A</p>
           <p className="text-sm text-zinc-600">{question.optionA}</p>
           <p className="mt-3 text-base font-medium text-zinc-900">选项B</p>
           <p className="text-sm text-zinc-600">{question.optionB}</p>
         </div>
-        <span className="text-sm font-medium text-zinc-500">#{question.id}</span>
+        <span className="text-sm font-medium text-zinc-500">
+          #{question.id}
+        </span>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-5">
         {CHOICE_OPTIONS.map((option, index) => (
@@ -197,9 +221,7 @@ export default function SurveyPage() {
   const completion = Math.round((answeredCount / totalQuestions) * 100);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (typeof window === "undefined") return;
     const cached = window.sessionStorage.getItem(STORAGE_KEY);
     if (cached) {
       try {
@@ -208,15 +230,13 @@ export default function SurveyPage() {
           setAnswers(parsed);
         });
       } catch {
-        // ignore broken cache
+        /* ignore broken cache */
       }
     }
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    if (typeof window === "undefined") return;
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
   }, [answers]);
 
@@ -225,9 +245,9 @@ export default function SurveyPage() {
     setMissingIds((prev) => prev.filter((missingId) => missingId !== id));
   }, []);
 
-  const handleSubmit = () => {
-    const stillMissing = QUESTIONS.filter((question) => !answers[question.id]).map(
-      (question) => question.id,
+  const handleSubmit = useCallback(() => {
+    const stillMissing = QUESTIONS.filter((q) => !answers[q.id]).map(
+      (q) => q.id,
     );
 
     if (stillMissing.length > 0) {
@@ -242,13 +262,15 @@ export default function SurveyPage() {
     setPendingSubmit(true);
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(answers));
     router.push("/results");
-  };
+  }, [answers, router]);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setAnswers({});
     setMissingIds([]);
-    window.sessionStorage.removeItem(STORAGE_KEY);
-  };
+    if (typeof window !== "undefined") {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
 
   return (
     <div className="bg-gradient-to-b from-white via-slate-50 to-white">
@@ -264,7 +286,9 @@ export default function SurveyPage() {
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {INFO_BLOCKS.map((block) => (
               <div key={block.title} className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-zinc-900">{block.title}</p>
+                <p className="text-sm font-semibold text-zinc-900">
+                  {block.title}
+                </p>
                 <p className="mt-1 text-sm text-zinc-600">{block.content}</p>
               </div>
             ))}
@@ -306,7 +330,9 @@ export default function SurveyPage() {
                 <div key={sub.title} className="space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="h-2 w-2 rounded-full bg-blue-500" />
-                    <h3 className="text-lg font-semibold text-zinc-900">{sub.title}</h3>
+                    <h3 className="text-lg font-semibold text-zinc-900">
+                      {sub.title}
+                    </h3>
                   </div>
                   <div className="space-y-6">
                     {sub.questions.map((question) => (
