@@ -189,6 +189,9 @@ export default function ResultsPage() {
         return tier;
       }
       const suggestion = CAREER_SUGGESTIONS[tier.dimension.id];
+      if (!suggestion) {
+        return tier;
+      }
       const roleBuckets = [suggestion.tier1, suggestion.tier2, suggestion.tier3];
       return {
         ...tier,
